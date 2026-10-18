@@ -199,6 +199,14 @@ Warnungen: Bundesamt für Bevölkerungsschutz und Katastrophenhilfe (BBK),
 NINA-API, dokumentiert von [bund.dev](https://nina.api.bund.dev). Bitte
 das Abrufintervall nicht unter 60 Sekunden setzen.
 
+## Entstehung
+
+Dieses Projekt wurde mit Unterstützung von KI erstellt: Code, Tests und
+Dokumentation sind gemeinsam mit [Claude](https://claude.ai) von Anthropic
+(über Claude Code) entstanden. Commits mit KI-Beteiligung sind mit
+`Co-Authored-By: Claude` gekennzeichnet. Betrieben und im echten Mesh
+getestet wird der Bot vom Autor.
+
 ## Lizenz
 
 MIT – siehe [LICENSE](LICENSE).
