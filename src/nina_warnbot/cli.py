@@ -106,7 +106,9 @@ async def _run(args) -> int:
     try:
         while not stop.is_set():
             try:
-                if not first_run_silent and not sender.connected:
+                # Dauerverbindung früh aufbauen, damit Fehler sofort auffallen.
+                # Im geteilten Betrieb verbindet der Bot erst, wenn er sendet.
+                if sender.keep_connected and not first_run_silent and not sender.connected:
                     await sender.connect()
                 await bot.run_cycle(silent=first_run_silent)
                 first_run_silent = False

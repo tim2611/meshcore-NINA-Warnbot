@@ -78,6 +78,18 @@ class WarnBot:
             reverse=True,
         )
 
+        try:
+            sent = await self._announce(ordered, silent)
+        finally:
+            await self.sender.release()  # im geteilten Betrieb: Node wieder freigeben
+
+        removed = self.state.prune()
+        if removed:
+            log.debug("%d alte Einträge vergessen", removed)
+        self.state.save()
+        return sent
+
+    async def _announce(self, ordered: list[Alert], silent: bool) -> int:
         budget = self.cfg.mesh.max_messages_per_cycle
         sent = 0
         for alert in ordered:
@@ -101,6 +113,8 @@ class WarnBot:
                 log.info("Sendebudget erschöpft – %s folgt im nächsten Durchlauf", alert.id)
                 break
 
+            if not self.sender.connected:
+                await self.sender.connect()  # erst jetzt, damit der Node nur bei Bedarf belegt ist
             for part in parts:
                 if sent:
                     await self._sleep(self.cfg.mesh.send_delay)
@@ -114,11 +128,6 @@ class WarnBot:
                                announced=True, silent=False)
             self.state.save()  # nach jeder Meldung, damit ein Absturz nichts doppelt sendet
             log.info("%s: %s (%d Teil(e))", action, alert.id, len(parts))
-
-        removed = self.state.prune()
-        if removed:
-            log.debug("%d alte Einträge vergessen", removed)
-        self.state.save()
         return sent
 
 

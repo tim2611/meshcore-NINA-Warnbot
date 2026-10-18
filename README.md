@@ -22,6 +22,8 @@ Empfängerseite.
 - Erster Start sendet keine Altlasten (abschaltbar)
 - Optional: Entwarnung bei Aufhebung und Meldung bei steigender Warnstufe
 - Verbindung zum Companion-Node per USB, TCP oder Bluetooth
+- Optional geteilter Betrieb: Verbindung nur zum Senden, unter einem
+  gemeinsamen Lock mit anderen Programmen am selben Node
 - Testlauf ohne Funk (`--dry-run`) und Vorschau (`--preview`)
 - systemd-Unit mit Härtung
 
@@ -44,7 +46,7 @@ Beispielnachricht:
 ```bash
 sudo useradd --system --home /var/lib/nina-warnbot --shell /usr/sbin/nologin nina-warnbot
 sudo python3 -m venv /opt/nina-warnbot/venv
-sudo /opt/nina-warnbot/venv/bin/pip install git+https://<dein-git-server>/<user>/Meshcore-NINA-Warnbot.git
+sudo /opt/nina-warnbot/venv/bin/pip install git+https://github.com/tim2611/meshcore-NINA-Warnbot.git
 
 sudo mkdir -p /etc/nina-warnbot
 sudo cp config.example.toml /etc/nina-warnbot/config.toml
@@ -84,6 +86,40 @@ sudo systemctl enable --now nina-warnbot
 journalctl -u nina-warnbot -f
 ```
 
+### Node mit anderen Programmen teilen
+
+Hängen am selben Companion-Node noch andere Programme, z. B. Skripte mit
+`meshcore-cli`, darf immer nur eines die Verbindung offen haben. Dafür gibt es
+`mesh.lock_file`:
+
+```toml
+[mesh]
+lock_file = "/tmp/meshcli.lock"
+```
+
+Der Bot verbindet sich dann nur, wenn er etwas zu senden hat. Vorher wartet er
+auf einen exklusiven `flock` auf dieser Datei, nach dem Senden trennt er und
+gibt den Lock frei. Die anderen Programme müssen dieselbe Datei genauso
+sperren, etwa in der Shell mit `flock /tmp/meshcli.lock meshcore-cli …` oder in
+Python mit `fcntl.flock`. Ohne `lock_file` hält der Bot die Verbindung
+dauerhaft offen.
+
+Liegt die Lock-Datei in `/tmp`, braucht der Dienst ein Drop-in, sonst sieht er
+wegen `PrivateTmp=yes` ein eigenes `/tmp`:
+
+```bash
+sudo mkdir -p /etc/systemd/system/nina-warnbot.service.d
+sudo cp systemd/shared-lock.conf /etc/systemd/system/nina-warnbot.service.d/
+sudo systemctl daemon-reload
+```
+
+Zu den Rechten: Der Bot öffnet die Datei nur lesend, das genügt für `flock`.
+Fehlt sie, legt er sie mit den Rechten `666` an. Die anderen Programme
+sollten sie nach Möglichkeit ebenfalls nur lesend öffnen. Viele Distributionen
+setzen `fs.protected_regular`, und dann scheitert in `/tmp` jedes Öffnen mit
+`O_CREAT` (z. B. Pythons `open(…, "a")`) an einer Datei, die einem anderen
+Benutzer gehört.
+
 ## Konfiguration
 
 Alle Einstellungen sind in `config.example.toml` kommentiert. Die wichtigsten:
@@ -98,6 +134,7 @@ Alle Einstellungen sind in `config.example.toml` kommentiert. Die wichtigsten:
 | `message.transliterate` | Umlaute ausschreiben, spart Bytes |
 | `mesh.connection` | `serial`, `tcp` oder `ble` |
 | `mesh.channel` | Kanalname auf dem Node, z. B. `#warnung` |
+| `mesh.lock_file` | Node mit anderen Programmen teilen (siehe oben) |
 | `bot.announce_updates` | `never`, `severity` oder `always` |
 
 ### Rücksicht aufs Mesh

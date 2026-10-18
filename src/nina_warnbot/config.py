@@ -86,6 +86,10 @@ class MeshConfig:
     max_channels: int = 16
     send_delay: float = 5.0
     max_messages_per_cycle: int = 4
+    # Leer = Verbindung dauerhaft halten. Sonst nur zum Senden verbinden,
+    # unter diesem flock (für Nodes, die sich mehrere Programme teilen)
+    lock_file: str = ""
+    lock_timeout: float = 120.0
 
 
 @dataclass
@@ -178,6 +182,8 @@ def validate(cfg: Config) -> None:
         raise ConfigError("[mesh] send_delay muss mindestens 1 Sekunde betragen")
     if cfg.mesh.max_messages_per_cycle < 1:
         raise ConfigError("[mesh] max_messages_per_cycle muss mindestens 1 sein")
+    if cfg.mesh.lock_timeout < 1:
+        raise ConfigError("[mesh] lock_timeout muss mindestens 1 Sekunde betragen")
     if cfg.bot.announce_updates not in UPDATE_MODES:
         raise ConfigError(
             f"[bot] announce_updates muss einer von {', '.join(UPDATE_MODES)} sein"

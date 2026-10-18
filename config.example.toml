@@ -53,6 +53,14 @@ send_delay = 5.0
 # Höchstens so viele Funknachrichten pro Durchlauf, der Rest folgt später
 max_messages_per_cycle = 4
 
+# Node mit anderen Programmen teilen (z. B. Skripte mit meshcore-cli)?
+# Leer lassen: der Bot hält die Verbindung dauerhaft und hat den Node für sich.
+# Gesetzt: der Bot verbindet sich nur zum Senden und hält dabei einen flock
+# auf dieser Datei. Andere Programme müssen dieselbe Datei sperren.
+# lock_file = "/tmp/meshcli.lock"
+# Höchstens so lange auf den Lock warten, danach später erneut versuchen
+# lock_timeout = 120
+
 [bot]
 state_file = "/var/lib/nina-warnbot/state.json"
 # Beim allerersten Start bereits laufende Warnungen senden?

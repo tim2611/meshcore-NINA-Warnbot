@@ -7,7 +7,7 @@ from nina_warnbot.bot import WarnBot
 from nina_warnbot.config import ConfigError, normalize_ars, parse_config
 from nina_warnbot.formatter import build_text, split_message, transliterate
 from nina_warnbot.nina import NinaError, apply_details, parse_dashboard
-from nina_warnbot.sender import DryRunSender, SendError
+from nina_warnbot.sender import DryRunSender, FileLock, MeshCoreSender, SendError
 from nina_warnbot.state import State
 
 
@@ -208,3 +208,92 @@ def test_parse_dashboard_tolerates_junk():
     alerts = parse_dashboard([{"foo": 1}, "x", dash_item("kat.5")])
     assert [a.id for a in alerts] == ["kat.5"]
     assert alerts[0].provider_label == "KATWARN"
+
+
+# --- Geteilter Node (lock_file) ----------------------------------------------
+class SharedSender(DryRunSender):
+    """Verhält sich wie MeshCoreSender mit lock_file: verbindet nur bei Bedarf."""
+
+    keep_connected = False
+
+    def __init__(self, fail=False):
+        super().__init__()
+        self.fail = fail
+        self.is_connected = False
+        self.calls: list[str] = []
+
+    @property
+    def connected(self):
+        return self.is_connected
+
+    async def connect(self, resolve_channel=True):
+        self.calls.append("connect")
+        self.is_connected = True
+
+    async def send(self, text):
+        assert self.is_connected
+        if self.fail:
+            raise SendError("Funk weg")
+        await super().send(text)
+
+    async def release(self):
+        self.calls.append("release")
+        self.is_connected = False
+
+
+def test_shared_connects_only_when_sending(tmp_path):
+    sender = SharedSender()
+    bot = make_bot(tmp_path, [dash_item("mow.1"), dash_item("mow.2")], sender=sender)
+    assert run(bot.run_cycle()) == 2
+    assert sender.calls == ["connect", "release"]
+    sender.calls.clear()
+    assert run(bot.run_cycle()) == 0
+    assert sender.calls == ["release"]  # nichts zu senden: Node bleibt frei
+
+
+def test_shared_releases_on_failure(tmp_path):
+    sender = SharedSender(fail=True)
+    bot = make_bot(tmp_path, [dash_item("mow.1")], sender=sender)
+    with pytest.raises(SendError):
+        run(bot.run_cycle())
+    assert sender.calls == ["connect", "release"]
+    assert not sender.connected
+
+
+def test_config_lock_timeout_minimum():
+    with pytest.raises(ConfigError):
+        make_cfg(mesh={"lock_file": "/tmp/x.lock", "lock_timeout": 0})
+
+
+def test_file_lock_excludes_and_times_out(tmp_path):
+    path = str(tmp_path / "mesh.lock")
+    a = FileLock(path, timeout=5)
+    b = FileLock(path, timeout=1)
+    run(a.acquire())
+    with pytest.raises(SendError):
+        run(b.acquire())
+    assert not b.held
+    a.release()
+    run(b.acquire())
+    assert b.held
+    b.release()
+
+
+def test_file_lock_works_on_readonly_file(tmp_path):
+    path = tmp_path / "mesh.lock"
+    path.touch()
+    path.chmod(0o444)  # wie eine fremde Lock-Datei ohne Schreibrecht
+    lock = FileLock(str(path), timeout=1)
+    run(lock.acquire())
+    assert lock.held
+    lock.release()
+
+
+def test_meshcore_sender_close_releases_lock(tmp_path):
+    path = str(tmp_path / "mesh.lock")
+    cfg = make_cfg(mesh={"lock_file": path})
+    sender = MeshCoreSender(cfg.mesh)
+    assert not sender.keep_connected
+    run(sender.lock.acquire())
+    run(sender.release())
+    assert not sender.lock.held
