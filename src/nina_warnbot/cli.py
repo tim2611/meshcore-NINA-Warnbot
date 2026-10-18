@@ -35,6 +35,8 @@ def _parser() -> argparse.ArgumentParser:
                    help="auf dem Node eingerichtete Kanäle anzeigen")
     p.add_argument("--test-message", metavar="TEXT", nargs="?", const="",
                    help="eine Testnachricht in den Kanal senden")
+    p.add_argument("--send", metavar="TEXT",
+                   help="einen beliebigen Text ohne Präfix in den Kanal senden, z. B. eine Ankündigung")
     p.add_argument("--preview", action="store_true",
                    help="aktuelle Warnungen abrufen und formatiert anzeigen, ohne Zustand zu ändern")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -54,6 +56,19 @@ async def _preview(cfg, client: NinaClient) -> int:
         for part in render(a, cfg.message, cfg.nina.region_label):
             print(f"  {part}  ({len(part.encode('utf-8'))} B)")
     return 0
+
+
+async def _send_text(cfg, sender, text: str) -> None:
+    """Sendet einen Text, bei Bedarf in Teilen – unter dem Lock, falls eingestellt."""
+    parts = split_message(text, cfg.message.max_bytes, cfg.message.max_parts)
+    await sender.connect()
+    try:
+        for i, part in enumerate(parts):
+            if i:
+                await asyncio.sleep(cfg.mesh.send_delay)
+            await sender.send(part)
+    finally:
+        await sender.close()
 
 
 async def _run(args) -> int:
@@ -76,15 +91,16 @@ async def _run(args) -> int:
         return 0
 
     if args.test_message is not None:
-        await sender.connect()
         prefix = f"{cfg.message.prefix} " if cfg.message.prefix else ""
         text = f"{prefix}Test: {args.test_message or 'Warnbot-Testnachricht, bitte ignorieren'}"
-        parts = split_message(text, cfg.message.max_bytes, cfg.message.max_parts)
-        for i, part in enumerate(parts):
-            if i:
-                await asyncio.sleep(cfg.mesh.send_delay)
-            await sender.send(part)
-        await sender.close()
+        await _send_text(cfg, sender, text)
+        return 0
+
+    if args.send is not None:
+        if not args.send.strip():
+            log.error("--send braucht einen Text")
+            return 2
+        await _send_text(cfg, sender, args.send.strip())
         return 0
 
     state = State(cfg.bot.state_file)

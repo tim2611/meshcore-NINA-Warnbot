@@ -25,6 +25,7 @@ Empfängerseite.
 - Optional geteilter Betrieb: Verbindung nur zum Senden, unter einem
   gemeinsamen Lock mit anderen Programmen am selben Node
 - Testlauf ohne Funk (`--dry-run`) und Vorschau (`--preview`)
+- Eigene Ankündigungen in den Kanal (`--send`)
 - systemd-Unit mit Härtung
 
 Beispielnachricht:
@@ -56,9 +57,12 @@ sudoedit /etc/nina-warnbot/config.toml
 ### Regionalschlüssel finden
 
 Die ersten fünf Stellen des Amtlichen Regionalschlüssels bezeichnen den
-Landkreis. Sie stehen z. B. in der Gemeindeliste des Statistischen
-Bundesamts. Beispiele: `07233` Vulkaneifel, `07231` Bernkastel-Wittlich,
-`07232` Eifelkreis Bitburg-Prüm. Der Bot füllt automatisch mit Nullen auf.
+Landkreis. Am schnellsten findet man sie über die
+[Gemeindesuche im Statistikportal](https://www.statistikportal.de/de/gemeindeverzeichnis):
+einen beliebigen Ort im Kreis eingeben, die ersten fünf Stellen des
+angezeigten Gemeindeschlüssels (AGS) übernehmen. Beispiele: `07233`
+Vulkaneifel, `07231` Bernkastel-Wittlich, `07232` Eifelkreis Bitburg-Prüm.
+Der Bot füllt automatisch mit Nullen auf.
 
 ### Erst testen
 
@@ -85,6 +89,20 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now nina-warnbot
 journalctl -u nina-warnbot -f
 ```
+
+### Im Kanal ankündigen
+
+Wer den Kanal liest, sollte wissen, was dort künftig automatisch erscheint.
+Mit `--send` geht ein beliebiger Text ohne „Test:“-Präfix hinaus, mit
+derselben Byte-Grenze und demselben Lock wie die Warnungen:
+
+```bash
+sudo -u nina-warnbot /opt/nina-warnbot/venv/bin/nina-warnbot -c /etc/nina-warnbot/config.toml \
+  --send "ℹ️ Neu: NINA-Warnungen für Vulkaneifel ab Stufe MITTEL kommen hier automatisch. Kein offizieller Warnkanal!"
+```
+
+Der Hinweis „Kein offizieller Warnkanal“ ist wichtig, damit sich niemand
+allein auf das Mesh verlässt.
 
 ### Node mit anderen Programmen teilen
 
@@ -136,6 +154,26 @@ Alle Einstellungen sind in `config.example.toml` kommentiert. Die wichtigsten:
 | `mesh.channel` | Kanalname auf dem Node, z. B. `#warnung` |
 | `mesh.lock_file` | Node mit anderen Programmen teilen (siehe oben) |
 | `bot.announce_updates` | `never`, `severity` oder `always` |
+
+Änderungen wirken erst nach einem Neustart des Dienstes:
+
+```bash
+sudo systemctl restart nina-warnbot
+```
+
+### Warnstufen
+
+In der Konfiguration stehen die englischen Stufen aus der NINA-API, in den
+Funknachrichten die deutschen:
+
+| `min_severity` | In der Nachricht | Beispiel beim DWD |
+|---|---|---|
+| `Minor` | `[GERING]` | Frost, leichter Schneefall |
+| `Moderate` | `[MITTEL]` | Sturmböen, Glätte |
+| `Severe` | `[HOCH]` | schwere Sturmböen, Unwetter |
+| `Extreme` | `[EXTREM]` | Orkan, extremes Unwetter |
+
+`min_severity = "Severe"` leitet also nur Warnungen ab `[HOCH]` weiter.
 
 ### Rücksicht aufs Mesh
 

@@ -297,3 +297,27 @@ def test_meshcore_sender_close_releases_lock(tmp_path):
     run(sender.lock.acquire())
     run(sender.release())
     assert not sender.lock.held
+
+
+# --- Kommandozeile -----------------------------------------------------------
+def _write_cfg(tmp_path):
+    p = tmp_path / "config.toml"
+    p.write_text(
+        '[nina]\nars = ["07233"]\n[mesh]\nchannel = "#warnung"\n'
+        f'[bot]\nstate_file = "{tmp_path / "state.json"}"\n',
+        encoding="utf-8",
+    )
+    return str(p)
+
+
+def test_cli_send_without_prefix(tmp_path, caplog):
+    from nina_warnbot.cli import main
+    caplog.set_level("INFO")
+    assert main(["-c", _write_cfg(tmp_path), "--dry-run", "--send", "Hallo Mesh"]) == 0
+    sent = [r.getMessage() for r in caplog.records if "[TESTLAUF]" in r.getMessage()]
+    assert sent == ["[TESTLAUF] Hallo Mesh (10 Bytes)"]
+
+
+def test_cli_send_rejects_empty(tmp_path):
+    from nina_warnbot.cli import main
+    assert main(["-c", _write_cfg(tmp_path), "--dry-run", "--send", "  "]) == 2
