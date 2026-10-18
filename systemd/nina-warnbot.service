@@ -1,0 +1,31 @@
+[Unit]
+Description=Meshcore-NINA-Warnbot – NINA-Warnungen ins MeshCore-Netz
+Documentation=https://nina.api.bund.dev
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=nina-warnbot
+Group=nina-warnbot
+# Zugriff auf /dev/ttyUSB* bzw. /dev/ttyACM*
+SupplementaryGroups=dialout
+ExecStart=/opt/nina-warnbot/venv/bin/nina-warnbot --config /etc/nina-warnbot/config.toml
+StateDirectory=nina-warnbot
+Restart=on-failure
+RestartSec=30
+
+# Härtung
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+ReadWritePaths=/var/lib/nina-warnbot
+
+[Install]
+WantedBy=multi-user.target

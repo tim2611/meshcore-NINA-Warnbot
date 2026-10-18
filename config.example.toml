@@ -1,0 +1,65 @@
+# Meshcore-NINA-Warnbot – Beispielkonfiguration
+# Kopieren nach /etc/nina-warnbot/config.toml und anpassen.
+
+[nina]
+# Amtlicher Regionalschlüssel (ARS) auf Kreisebene. Es reichen die ersten
+# 5 Stellen, der Rest wird mit Nullen aufgefüllt. Mehrere Kreise möglich.
+# Beispiel: Landkreis Vulkaneifel = 07233
+ars = ["072330000000"]
+# Erscheint in jeder Nachricht (leer lassen, um es wegzulassen)
+region_label = "Vulkaneifel"
+# Abrufintervall in Sekunden (mindestens 60)
+poll_interval = 120
+
+[filter]
+# Minor | Moderate | Severe | Extreme
+min_severity = "Moderate"
+# Quellen: mow (MoWaS), kat (KATWARN), biw (BIWAPP), dwd (Wetterdienst),
+#          lhp (Hochwasserportal), pol (Polizei)
+providers = ["mow", "kat", "biw", "dwd", "lhp", "pol"]
+# Ereigniscodes, die nie gesendet werden sollen (z. B. "BBK-EVC-040")
+exclude_events = []
+
+[message]
+prefix = "⚠️"
+# Maximale Länge einer Funknachricht in Bytes (UTF-8). Umlaute zählen
+# doppelt, Emojis vierfach. 130 lässt Luft für den Absendernamen.
+max_bytes = 130
+# Längere Meldungen werden in höchstens so viele Teile zerlegt
+max_parts = 2
+# Umlaute ausschreiben (ä → ae) und Sonderzeichen entfernen – spart Bytes
+transliterate = false
+include_region = true
+include_expires = true
+timezone = "Europe/Berlin"
+
+[mesh]
+# serial | tcp | ble
+connection = "serial"
+serial_port = "/dev/ttyUSB0"
+baudrate = 115200
+# host = "192.168.1.50"     # für tcp
+# tcp_port = 5000
+# ble_address = "AA:BB:CC:DD:EE:FF"   # für ble
+# ble_pin = "123456"
+
+# Kanal per Name (muss auf dem Node eingerichtet sein) ...
+channel = "#warnung"
+# ... oder fest per Index:
+# channel_index = 1
+
+# Pause zwischen zwei Funknachrichten in Sekunden
+send_delay = 5.0
+# Höchstens so viele Funknachrichten pro Durchlauf, der Rest folgt später
+max_messages_per_cycle = 4
+
+[bot]
+state_file = "/var/lib/nina-warnbot/state.json"
+# Beim allerersten Start bereits laufende Warnungen senden?
+announce_existing_on_start = false
+# Aktualisierungen: never | severity (nur wenn die Stufe steigt) | always
+announce_updates = "severity"
+# "Entwarnung" senden, wenn eine gesendete Warnung aufgehoben wird
+announce_cancel = true
+dry_run = false
+log_level = "INFO"
