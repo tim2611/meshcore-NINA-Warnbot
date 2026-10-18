@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 200 200" role="img" aria-label="Meshcore-NINA-Warnbot">
+  <title>Meshcore-NINA-Warnbot</title>
+  <rect x="4" y="4" width="192" height="192" rx="44" fill="#F2A900"/>
+  <line x1="100" y1="42" x2="100" y2="112" stroke="#0F1E2E" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="100" cy="152" r="17" fill="#0F1E2E"/>
+</svg>

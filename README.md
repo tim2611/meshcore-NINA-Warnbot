@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.svg" width="160" alt="Meshcore-NINA-Warnbot Logo"></p>
+
 # Meshcore-NINA-Warnbot
 
 Leitet amtliche Warnungen aus der [NINA-API](https://nina.api.bund.dev) des

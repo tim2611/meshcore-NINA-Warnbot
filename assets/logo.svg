@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 200 200" role="img" aria-label="Meshcore-NINA-Warnbot">
+  <title>Meshcore-NINA-Warnbot</title>
+  <rect x="4" y="4" width="192" height="192" rx="44" fill="#F2A900"/>
+  <g fill="none" stroke="#0F1E2E" stroke-linecap="round">
+    <line x1="100" y1="42" x2="100" y2="112" stroke-width="24"/>
+    <path d="M76 132 Q66 150 76 168" stroke-width="8"/>
+    <path d="M124 132 Q134 150 124 168" stroke-width="8"/>
+    <path d="M58 120 Q42 150 58 180" stroke-width="8" opacity="0.5"/>
+    <path d="M142 120 Q158 150 142 180" stroke-width="8" opacity="0.5"/>
+  </g>
+  <circle cx="100" cy="150" r="13" fill="#0F1E2E"/>
+</svg>
