@@ -299,6 +299,44 @@ def test_meshcore_sender_close_releases_lock(tmp_path):
     assert not sender.lock.held
 
 
+class FakeMC:
+    def __init__(self, name):
+        self.self_info = {"name": name}
+        self.closed = False
+
+    async def disconnect(self):
+        self.closed = True
+
+
+def _probing_sender(monkeypatch, nodes):
+    cfg = make_cfg(mesh={"node_name": "bot", "serial_port": "/dev/a"})
+    sender = MeshCoreSender(cfg.mesh)
+    monkeypatch.setattr(sender, "_serial_candidates", lambda: list(nodes))
+
+    async def fake_open(port):
+        node = nodes[port]
+        if isinstance(node, Exception):
+            raise node
+        return node
+
+    monkeypatch.setattr(sender, "_open_serial", fake_open)
+    return sender
+
+
+def test_find_serial_picks_node_by_name(monkeypatch):
+    nodes = {"/dev/a": FakeMC("anderer"), "/dev/b": OSError("weg"), "/dev/c": FakeMC("bot")}
+    sender = _probing_sender(monkeypatch, nodes)
+    assert run(sender._find_serial()) is nodes["/dev/c"]
+    assert nodes["/dev/a"].closed
+    assert not nodes["/dev/c"].closed
+
+
+def test_find_serial_raises_when_missing(monkeypatch):
+    sender = _probing_sender(monkeypatch, {"/dev/a": FakeMC("anderer"), "/dev/b": None})
+    with pytest.raises(SendError, match="bot"):
+        run(sender._find_serial())
+
+
 # --- Kommandozeile -----------------------------------------------------------
 def _write_cfg(tmp_path):
     p = tmp_path / "config.toml"

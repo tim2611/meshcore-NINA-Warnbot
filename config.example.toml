@@ -38,6 +38,10 @@ timezone = "Europe/Berlin"
 connection = "serial"
 serial_port = "/dev/ttyUSB0"
 baudrate = 115200
+# Name des Companions. Gesetzt: Der Bot probiert zuerst serial_port, dann alle
+# anderen seriellen USB-Ports und nimmt den, an dem dieser Node antwortet.
+# Hilft, wenn die Portnummer wechselt oder weitere Geräte angeschlossen sind.
+# node_name = "mein-companion"
 # host = "192.168.1.50"     # für tcp
 # tcp_port = 5000
 # ble_address = "AA:BB:CC:DD:EE:FF"   # für ble

@@ -153,6 +153,7 @@ Alle Einstellungen sind in `config.example.toml` kommentiert. Die wichtigsten:
 | `message.max_bytes` | Maximale Bytes pro Funknachricht |
 | `message.transliterate` | Umlaute ausschreiben, spart Bytes |
 | `mesh.connection` | `serial`, `tcp` oder `ble` |
+| `mesh.node_name` | Name des Companions: Port an diesem Namen erkennen, falls die Portnummer wechselt |
 | `mesh.channel` | Kanalname auf dem Node, z. B. `#warnung` |
 | `mesh.lock_file` | Node mit anderen Programmen teilen (siehe oben) |
 | `bot.announce_updates` | `never`, `severity` oder `always` |

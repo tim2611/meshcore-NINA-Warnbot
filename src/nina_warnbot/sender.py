@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import fcntl
+import glob
 import logging
 import os
 import time
@@ -11,6 +12,9 @@ import time
 from .config import MeshConfig
 
 log = logging.getLogger(__name__)
+
+# Sekunden, die ein Port bei der Suche nach node_name höchstens antworten darf
+PROBE_TIMEOUT = 20.0
 
 
 class SendError(RuntimeError):
@@ -148,8 +152,7 @@ class MeshCoreSender:
 
         c = self.cfg
         if c.connection == "serial":
-            log.info("Verbinde seriell mit %s", c.serial_port)
-            mc = await MeshCore.create_serial(c.serial_port, c.baudrate)
+            mc = await (self._find_serial() if c.node_name else self._open_serial(c.serial_port))
         elif c.connection == "tcp":
             log.info("Verbinde per TCP mit %s:%s", c.host, c.tcp_port)
             mc = await MeshCore.create_tcp(c.host, c.tcp_port)
@@ -176,6 +179,52 @@ class MeshCoreSender:
             if name:
                 found.append((idx, name))
         return found
+
+    async def _open_serial(self, port: str):
+        from meshcore import MeshCore
+
+        log.info("Verbinde seriell mit %s", port)
+        return await MeshCore.create_serial(port, self.cfg.baudrate)
+
+    def _serial_candidates(self) -> list[str]:
+        """serial_port zuerst, dann alle anderen seriellen USB-Ports.
+
+        ttyACM-Geräte (natives USB, z. B. Heltec V4) kommen zuletzt, weil das
+        Öffnen sie neu starten kann.
+        """
+        found = sorted(glob.glob("/dev/serial/by-id/*")) or \
+            sorted(glob.glob("/dev/ttyUSB*") + glob.glob("/dev/ttyACM*"))
+        found.sort(key=lambda p: "ACM" in os.path.realpath(p))
+        ports, seen = [], set()
+        for port in [self.cfg.serial_port, *found]:
+            real = os.path.realpath(port)
+            if os.path.exists(port) and real not in seen:
+                seen.add(real)
+                ports.append(port)
+        return ports
+
+    async def _find_serial(self):
+        """Nimmt den Port, an dem der Companion node_name antwortet.
+
+        Die Portnummer kann wechseln, und andere Geräte können angeschlossen sein.
+        """
+        wanted = self.cfg.node_name
+        ports = self._serial_candidates()
+        for port in ports:
+            try:
+                mc = await asyncio.wait_for(self._open_serial(port), PROBE_TIMEOUT)
+            except Exception as exc:
+                log.info("Port %s: keine Verbindung (%s)", port, exc or type(exc).__name__)
+                continue
+            name = (mc.self_info or {}).get("name") if mc is not None else None
+            if name == wanted:
+                return mc
+            log.info("Port %s: nicht %s (%s)", port, wanted, name or "keine Antwort")
+            if mc is not None:
+                await mc.disconnect()
+        raise SendError(
+            f"Node {wanted!r} an keinem seriellen Port gefunden. Geprüft: {', '.join(ports) or 'keiner'}"
+        )
 
     async def _resolve_channel(self) -> int:
         if self.cfg.channel_index is not None:

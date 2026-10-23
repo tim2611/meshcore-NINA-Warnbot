@@ -76,6 +76,8 @@ class MessageConfig:
 class MeshConfig:
     connection: str = "serial"
     serial_port: str = "/dev/ttyUSB0"
+    # Gesetzt: Port des Companions mit diesem Namen suchen, serial_port zuerst
+    node_name: str = ""
     baudrate: int = 115200
     host: str = ""
     tcp_port: int = 5000
